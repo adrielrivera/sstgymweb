@@ -8,6 +8,8 @@ import SuccessModal from '@/components/SuccessModal';
 import TermCalendar from '@/components/TermCalendar';
 import { TimeSlot, WeekType, getCurrentWeekType, getCurrentWeekNumber } from '@/models/types';
 import { getAllTimeSlots, bookSession, getCurrentUser } from '@/services/bookingService';
+import { mockTimeSlots } from '@/models/mockData';
+import Footer from '@/components/Footer';
 
 export default function Home() {
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
@@ -16,15 +18,32 @@ export default function Home() {
   const [submittedExercisePlan, setSubmittedExercisePlan] = useState('');
   const [bookedTimeSlot, setBookedTimeSlot] = useState<TimeSlot | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [currentWeekType, setCurrentWeekType] = useState<WeekType>(getCurrentWeekType());
   
-  // On mount, load the time slots
+  // On mount, load the time slots and set loaded state for animation
   useEffect(() => {
     const slots = getAllTimeSlots();
     setTimeSlots(slots);
+    
+    // Delay the loaded state slightly for a fade-in effect
+    const timer = setTimeout(() => {
+      setIsLoaded(true);
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, []);
+
+  const handleWeekTypeChange = (weekType: WeekType) => {
+    setCurrentWeekType(weekType);
+  };
 
   const handleSelectTimeSlot = (timeSlot: TimeSlot) => {
     setSelectedTimeSlot(timeSlot);
+    // Scroll to the booking form smoothly
+    setTimeout(() => {
+      document.getElementById('booking-form')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   };
 
   const handleBookingSubmit = (exercisePlan: string) => {
@@ -59,59 +78,57 @@ export default function Home() {
     setShowCalendar(!showCalendar);
   };
 
-  const currentWeekType = getCurrentWeekType();
   const currentWeekNumber = getCurrentWeekNumber();
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="text-center mb-10">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">SST Gym Booking</h1>
-        <div className="bg-primary-50 p-4 rounded-lg mb-4 inline-block">
-          <p className="text-lg font-medium text-primary-800">
-            Current Term: March 24 - May 31, 2024 (10-week term)
-          </p>
-          <p className="text-md text-primary-700">
-            Now in Week {currentWeekNumber} ({currentWeekType === WeekType.ODD ? 'Odd' : 'Even'})
-          </p>
+    <div className="flex flex-col min-h-screen">
+      <main className={`flex-grow bg-gradient-to-b from-gray-50 to-gray-100 py-8 px-4 sm:px-6 lg:px-8 ${isLoaded ? 'animate-fadeIn' : 'opacity-0'}`}>
+        {/* Hero Section */}
+        <div className="max-w-6xl mx-auto mb-8">
+          <div className="relative overflow-hidden bg-white rounded-2xl shadow-lg p-8 mb-8">
+            {/* Abstract Background Pattern */}
+            <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-100 rounded-full opacity-50"></div>
+            <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-indigo-100 rounded-full opacity-50"></div>
+            
+            <div className="relative">
+              <h1 className="text-4xl font-bold tracking-tight text-gray-900 mb-4">
+                SST Gym Booking
+              </h1>
+              <p className="text-lg text-gray-600 max-w-3xl">
+                Book your gym sessions easily. Check availability across odd and even weeks, and secure your spot today.
+              </p>
+            </div>
+          </div>
+
+          <WeekSelector 
+            currentWeekType={currentWeekType} 
+            onWeekTypeChange={handleWeekTypeChange} 
+            showCalendar={toggleCalendar}
+          />
+
+          <div className="mt-12">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">Available Time Slots</h2>
+            <TimeSlotList 
+              timeSlots={timeSlots} 
+              currentWeekType={currentWeekType}
+              onSelectTimeSlot={handleSelectTimeSlot}
+            />
+          </div>
         </div>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          Book your gym sessions easily. Choose your preferred time slot, input your exercise plan,
-          and don't forget to bring a towel and S&W attire!
-        </p>
-      </div>
 
-      <WeekSelector 
-        currentWeekType={currentWeekType}
-        showCalendar={toggleCalendar}
-      />
+        {showSuccessModal && selectedTimeSlot && (
+          <SuccessModal 
+            timeSlot={selectedTimeSlot} 
+            onClose={handleSuccessModalClose} 
+          />
+        )}
+
+        {showCalendar && (
+          <TermCalendar onClose={toggleCalendar} />
+        )}
+      </main>
       
-      {showCalendar && (
-        <TermCalendar
-          currentWeekType={currentWeekType}
-        />
-      )}
-
-      <TimeSlotList
-        timeSlots={timeSlots}
-        currentWeekType={currentWeekType}
-        onSelectTimeSlot={handleSelectTimeSlot}
-      />
-
-      {selectedTimeSlot && (
-        <BookingForm
-          selectedTimeSlot={selectedTimeSlot}
-          onSubmit={handleBookingSubmit}
-          onCancel={handleBookingCancel}
-        />
-      )}
-
-      {showSuccessModal && bookedTimeSlot && (
-        <SuccessModal
-          timeSlot={bookedTimeSlot}
-          exercisePlan={submittedExercisePlan}
-          onClose={handleSuccessModalClose}
-        />
-      )}
+      <Footer />
     </div>
   );
 }
